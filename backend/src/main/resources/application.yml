@@ -1,0 +1,30 @@
+server:
+  port: ${PORT:8080}
+
+spring:
+  application:
+    name: secure-chat
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/securechat}
+    username: ${DATABASE_USERNAME:securechat}
+    password: ${DATABASE_PASSWORD:securechat}
+  flyway:
+    enabled: true
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+
+securechat:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+  jwt:
+    secret: ${JWT_SECRET:change-me-change-me-change-me-change-me-32b}
+    expiration-minutes: ${JWT_EXPIRATION_MINUTES:1440}
+  crypto:
+    secret: ${CRYPTO_SECRET:change-me-with-a-long-random-message-secret}
+

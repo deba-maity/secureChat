@@ -1,0 +1,89 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 20% 98%;
+    --foreground: 220 22% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 22% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 22% 12%;
+    --primary: 181 72% 34%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 14 88% 63%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 215 19% 92%;
+    --muted-foreground: 220 10% 42%;
+    --accent: 43 95% 55%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 76% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 18% 86%;
+    --input: 214 18% 86%;
+    --ring: 181 72% 34%;
+  }
+
+  .dark {
+    --background: 224 24% 9%;
+    --foreground: 210 20% 96%;
+    --card: 224 20% 13%;
+    --card-foreground: 210 20% 96%;
+    --popover: 224 20% 13%;
+    --popover-foreground: 210 20% 96%;
+    --primary: 181 68% 48%;
+    --primary-foreground: 224 24% 9%;
+    --secondary: 14 92% 68%;
+    --secondary-foreground: 224 24% 9%;
+    --muted: 224 15% 18%;
+    --muted-foreground: 214 12% 70%;
+    --accent: 43 95% 58%;
+    --accent-foreground: 224 24% 9%;
+    --destructive: 0 74% 58%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 223 16% 22%;
+    --input: 223 16% 22%;
+    --ring: 181 68% 48%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    min-height: 100%;
+  }
+
+  body {
+    @apply min-h-screen bg-background text-foreground antialiased;
+    letter-spacing: 0;
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    letter-spacing: 0;
+  }
+}
+
+@layer utilities {
+  .glass-panel {
+    @apply border shadow-panel backdrop-blur-xl;
+    border-color: rgba(255, 255, 255, 0.45);
+    background: rgba(255, 255, 255, 0.72);
+  }
+
+  .dark .glass-panel {
+    border-color: rgba(255, 255, 255, 0.1);
+    background: hsl(var(--card) / 0.72);
+  }
+
+  .privacy-grid {
+    background-image:
+      linear-gradient(rgba(20, 184, 166, 0.12) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(244, 114, 91, 0.10) 1px, transparent 1px);
+    background-size: 42px 42px;
+  }
+}
