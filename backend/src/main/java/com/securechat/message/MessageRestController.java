@@ -12,9 +12,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/messages")
 public class MessageRestController {
     private final MessageService messageService;
+    private final MessageDeliveryService messageDeliveryService;
 
-    public MessageRestController(MessageService messageService) {
+    public MessageRestController(MessageService messageService, MessageDeliveryService messageDeliveryService) {
         this.messageService = messageService;
+        this.messageDeliveryService = messageDeliveryService;
     }
 
     @PostMapping
@@ -22,6 +24,8 @@ public class MessageRestController {
             @AuthenticationPrincipal AppUser currentUser,
             @Valid @RequestBody SendMessageRequest request
     ) {
-        return messageService.send(currentUser, request);
+        MessageResponse message = messageService.send(currentUser, request);
+        messageDeliveryService.deliver(message);
+        return message;
     }
 }

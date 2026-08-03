@@ -7,7 +7,6 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
 import java.security.Principal;
@@ -16,24 +15,23 @@ import java.security.Principal;
 public class MessagingController {
     private final MessageService messageService;
     private final UserRepository userRepository;
-    private final SimpMessagingTemplate messagingTemplate;
+    private final MessageDeliveryService messageDeliveryService;
 
     public MessagingController(
             MessageService messageService,
             UserRepository userRepository,
-            SimpMessagingTemplate messagingTemplate
+            MessageDeliveryService messageDeliveryService
     ) {
         this.messageService = messageService;
         this.userRepository = userRepository;
-        this.messagingTemplate = messagingTemplate;
+        this.messageDeliveryService = messageDeliveryService;
     }
 
     @MessageMapping("/chat.send")
     public void send(@Valid @Payload SendMessageRequest request, Principal principal) {
         AppUser sender = currentUser(principal);
         MessageResponse message = messageService.send(sender, request);
-        messagingTemplate.convertAndSendToUser(message.sender().username(), "/queue/messages", message);
-        messagingTemplate.convertAndSendToUser(message.recipient().username(), "/queue/messages", message);
+        messageDeliveryService.deliver(message);
     }
 
     @MessageMapping("/chat.typing")
@@ -41,9 +39,8 @@ public class MessagingController {
         AppUser sender = currentUser(principal);
         AppUser recipient = userRepository.findById(signal.recipientId())
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Recipient not found"));
-        messagingTemplate.convertAndSendToUser(
+        messageDeliveryService.deliverTyping(
                 recipient.getUsername(),
-                "/queue/typing",
                 new TypingEvent(signal.conversationId(), sender.getUsername(), signal.typing())
         );
     }

@@ -48,6 +48,7 @@ public class SettingsService {
     @Transactional
     public SettingsResponse update(AppUser user, UpdateSettingsRequest request) {
         AppUser current = managed(user);
+        boolean hasNewFavoritePin = request.favoritePin() != null && !request.favoritePin().isBlank();
         if (request.hideLastSeen() != null) {
             current.setHideLastSeen(request.hideLastSeen());
         }
@@ -60,7 +61,16 @@ public class SettingsService {
         if (request.screenshotWarningEnabled() != null) {
             current.setScreenshotWarningEnabled(request.screenshotWarningEnabled());
         }
+        if (hasNewFavoritePin) {
+            current.setFavoritePinHash(passwordEncoder.encode(request.favoritePin()));
+            current.setLockFavoriteChats(true);
+            favoriteConversationRepository.findAllByUserOrderByCreatedAtDesc(current)
+                    .forEach(favorite -> favorite.setLocked(true));
+        }
         if (request.lockFavoriteChats() != null) {
+            if (request.lockFavoriteChats() && current.getFavoritePinHash() == null) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "Set a favorite PIN before locking favorite chats");
+            }
             current.setLockFavoriteChats(request.lockFavoriteChats());
             favoriteConversationRepository.findAllByUserOrderByCreatedAtDesc(current)
                     .forEach(favorite -> favorite.setLocked(request.lockFavoriteChats()));
@@ -70,12 +80,6 @@ public class SettingsService {
         }
         if (request.autoDeleteEnabled() != null) {
             current.setAutoDeleteEnabled(request.autoDeleteEnabled());
-        }
-        if (request.favoritePin() != null && !request.favoritePin().isBlank()) {
-            current.setFavoritePinHash(passwordEncoder.encode(request.favoritePin()));
-            current.setLockFavoriteChats(true);
-            favoriteConversationRepository.findAllByUserOrderByCreatedAtDesc(current)
-                    .forEach(favorite -> favorite.setLocked(true));
         }
         return SettingsResponse.from(current);
     }

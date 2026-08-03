@@ -82,16 +82,17 @@ export function SecureChatApp() {
   const [unlockedFavoriteIds, setUnlockedFavoriteIds] = useState<Set<string>>(new Set());
   const [pinDraft, setPinDraft] = useState("");
   const [favoritePin, setFavoritePin] = useState("");
-  const [passwordDraft, setPasswordDraft] = useState({ currentPassword: "", newPassword: "" });
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const activeRef = useRef<Conversation | null>(null);
   const token = session?.token;
 
   useEffect(() => {
     setMounted(true);
-    const raw = window.localStorage.getItem(SESSION_KEY);
+    const raw = window.sessionStorage.getItem(SESSION_KEY) ?? window.localStorage.getItem(SESSION_KEY);
     if (raw) {
       setSession(JSON.parse(raw) as Session);
+      window.sessionStorage.setItem(SESSION_KEY, raw);
+      window.localStorage.removeItem(SESSION_KEY);
     }
   }, []);
 
@@ -106,8 +107,10 @@ export function SecureChatApp() {
   const persistSession = useCallback((nextSession: Session | null) => {
     setSession(nextSession);
     if (nextSession) {
-      window.localStorage.setItem(SESSION_KEY, JSON.stringify(nextSession));
+      window.sessionStorage.setItem(SESSION_KEY, JSON.stringify(nextSession));
+      window.localStorage.removeItem(SESSION_KEY);
     } else {
+      window.sessionStorage.removeItem(SESSION_KEY);
       window.localStorage.removeItem(SESSION_KEY);
     }
   }, []);
@@ -403,7 +406,12 @@ export function SecureChatApp() {
           </div>
         </header>
 
-        <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[360px_minmax(0,1fr)] xl:grid-cols-[380px_minmax(0,1fr)_360px]">
+        <div
+          className={cn(
+            "grid min-h-0 flex-1 gap-4 lg:grid-cols-[360px_minmax(0,1fr)]",
+            settingsOpen && "xl:grid-cols-[380px_minmax(0,1fr)_360px]"
+          )}
+        >
           <aside className="glass-panel flex min-h-[420px] flex-col rounded-lg">
             <div className="border-b border-border p-4">
               <div className="mb-3 flex items-center justify-between">
@@ -555,34 +563,34 @@ export function SecureChatApp() {
 
           <aside
             className={cn(
-              "glass-panel min-h-[620px] rounded-lg xl:block",
-              settingsOpen ? "block" : "hidden xl:block"
+              "glass-panel min-h-[620px] rounded-lg",
+              settingsOpen ? "block" : "hidden"
             )}
           >
             {settings && (
               <SettingsPanel
                 settings={settings}
                 favoritePin={favoritePin}
-                passwordDraft={passwordDraft}
                 onFavoritePinChange={setFavoritePin}
-                onPasswordDraftChange={setPasswordDraft}
                 onToggle={(key, value) => void updateSetting({ [key]: value })}
+                onFavoriteLockChange={(value) => {
+                  if (value && !settings.favoritePinConfigured) {
+                    showNotice("Set a favorite chat PIN first");
+                    return;
+                  }
+                  void updateSetting({ lockFavoriteChats: value });
+                }}
                 onSetPin={() => {
                   if (favoritePin.trim().length < 4) {
                     showNotice("PIN must be at least 4 digits");
                     return;
                   }
-                  void updateSetting({ favoritePin }).then(() => setFavoritePin(""));
-                }}
-                onChangePassword={() => {
-                  if (!token) return;
-                  void api
-                    .changePassword(token, passwordDraft)
+                  void updateSetting({ favoritePin })
                     .then(() => {
-                      setPasswordDraft({ currentPassword: "", newPassword: "" });
-                      showNotice("Password changed");
+                      setFavoritePin("");
+                      showNotice("Favorite chat lock enabled");
                     })
-                    .catch((error) => showNotice(error instanceof Error ? error.message : "Password change failed"));
+                    .catch((error) => showNotice(error instanceof Error ? error.message : "Unable to set PIN"));
                 }}
                 onExport={() => void handleExport()}
                 onImport={() => fileInputRef.current?.click()}
@@ -733,6 +741,16 @@ function AuthScreen({ onAuthenticated }: { onAuthenticated: (session: Session) =
             >
               {mode === "login" ? "Create account" : "Use existing account"}
             </Button>
+            {mode === "login" && (
+              <Button
+                className="mt-2 w-full"
+                type="button"
+                variant="ghost"
+                onClick={() => setError("Password reset needs verified email or SMS and is not enabled in this local build.")}
+              >
+                Forgot password?
+              </Button>
+            )}
           </form>
         </div>
       </div>
@@ -984,24 +1002,20 @@ function Composer({
 function SettingsPanel({
   settings,
   favoritePin,
-  passwordDraft,
   onFavoritePinChange,
-  onPasswordDraftChange,
   onToggle,
+  onFavoriteLockChange,
   onSetPin,
-  onChangePassword,
   onExport,
   onImport,
   onDeleteAccount
 }: {
   settings: Settings;
   favoritePin: string;
-  passwordDraft: { currentPassword: string; newPassword: string };
   onFavoritePinChange: (value: string) => void;
-  onPasswordDraftChange: (value: { currentPassword: string; newPassword: string }) => void;
   onToggle: (key: keyof Settings, value: boolean) => void;
+  onFavoriteLockChange: (value: boolean) => void;
   onSetPin: () => void;
-  onChangePassword: () => void;
   onExport: () => void;
   onImport: () => void;
   onDeleteAccount: () => void;
@@ -1028,42 +1042,28 @@ function SettingsPanel({
           <SettingToggle label="Hide Online Status" icon={<Shield className="h-4 w-4" />} checked={settings.hideOnlineStatus} onCheckedChange={(value) => onToggle("hideOnlineStatus", value)} />
           <SettingToggle label="Read Receipts" icon={<CheckCheck className="h-4 w-4" />} checked={settings.readReceiptsEnabled} onCheckedChange={(value) => onToggle("readReceiptsEnabled", value)} />
           <SettingToggle label="Screenshot Warning" icon={<ShieldAlert className="h-4 w-4" />} checked={settings.screenshotWarningEnabled} onCheckedChange={(value) => onToggle("screenshotWarningEnabled", value)} />
-          <SettingToggle label="Lock Favorites" icon={<LockKeyhole className="h-4 w-4" />} checked={settings.lockFavoriteChats} onCheckedChange={(value) => onToggle("lockFavoriteChats", value)} />
         </div>
 
         <div className="mt-5 space-y-3 rounded-lg border border-border bg-background/70 p-3">
-          <Label>Favorite PIN</Label>
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <Label>Favorite chat lock</Label>
+              <p className="mt-1 text-xs text-muted-foreground">Require a PIN before opening favorite conversations.</p>
+            </div>
+            <Switch checked={settings.lockFavoriteChats} onCheckedChange={onFavoriteLockChange} />
+          </div>
           <div className="flex gap-2">
             <Input
               value={favoritePin}
               onChange={(event) => onFavoritePinChange(event.target.value)}
               type="password"
               inputMode="numeric"
-              placeholder={settings.favoritePinConfigured ? "Configured" : "New PIN"}
+              placeholder={settings.favoritePinConfigured ? "Update PIN" : "Create PIN first"}
             />
             <Button size="icon" title="Set PIN" onClick={onSetPin}>
               <KeyRound className="h-4 w-4" />
             </Button>
           </div>
-        </div>
-
-        <div className="mt-5 space-y-3 rounded-lg border border-border bg-background/70 p-3">
-          <Label>Password</Label>
-          <Input
-            type="password"
-            value={passwordDraft.currentPassword}
-            onChange={(event) => onPasswordDraftChange({ ...passwordDraft, currentPassword: event.target.value })}
-            placeholder="Current password"
-          />
-          <Input
-            type="password"
-            value={passwordDraft.newPassword}
-            onChange={(event) => onPasswordDraftChange({ ...passwordDraft, newPassword: event.target.value })}
-            placeholder="New password"
-          />
-          <Button className="w-full" variant="outline" onClick={onChangePassword}>
-            Change password
-          </Button>
         </div>
 
         <div className="mt-5 grid grid-cols-2 gap-2">
