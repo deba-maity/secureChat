@@ -9,7 +9,11 @@ import type {
   UserSummary
 } from "@/lib/types";
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+const configuredApiUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
+
+export const API_URL = configuredApiUrl.replace(/\/$/, "") === "http://localhost:8080" ? "" : configuredApiUrl;
+export const SOCKET_URL =
+  process.env.NEXT_PUBLIC_SOCKET_URL ?? process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8080";
 
 type RequestOptions = RequestInit & {
   token?: string;

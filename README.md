@@ -45,6 +45,55 @@ npm run dev
 
 Open `http://localhost:3000`.
 
+## Start Every Time On Windows
+
+Use this flow on a personal laptop when Docker is installed and Maven is not set up locally.
+
+Terminal 1, from PowerShell:
+
+```powershell
+cd C:\Users\Dmaity\Desktop\secureChat
+docker compose up -d postgres
+
+$backendPath = "$PWD\backend"
+
+docker run --rm -it `
+  --network securechat_default `
+  -p 8080:8080 `
+  -v "${backendPath}:/app" `
+  -w /app `
+  -e DATABASE_URL="jdbc:postgresql://postgres:5432/securechat" `
+  -e DATABASE_USERNAME="securechat" `
+  -e DATABASE_PASSWORD="securechat" `
+  -e JWT_SECRET="replace-with-at-least-32-random-characters" `
+  -e CRYPTO_SECRET="replace-with-a-long-random-message-encryption-secret" `
+  -e CORS_ALLOWED_ORIGINS="http://localhost:3000,http://localhost:3001" `
+  maven:3.9-eclipse-temurin-21 `
+  mvn spring-boot:run
+```
+
+Keep Terminal 1 open while using the app.
+
+Terminal 2:
+
+```powershell
+cd C:\Users\Dmaity\Desktop\secureChat\frontend
+npm install
+npm run dev
+```
+
+Open `http://localhost:3000`.
+
+To stop:
+
+```powershell
+# Press Ctrl+C in the backend and frontend terminals first.
+cd C:\Users\Dmaity\Desktop\secureChat
+docker compose down
+```
+
+Note: run the Docker backend command in PowerShell. Git Bash can rewrite `/app` into a Windows Git path and break Docker's `-w /app` setting.
+
 ## Important Environment Variables
 
 Backend defaults are local-development friendly, but set strong values before any shared deployment:
@@ -58,7 +107,10 @@ CORS_ALLOWED_ORIGINS=http://localhost:3000
 Frontend:
 
 ```bash
-NEXT_PUBLIC_API_URL=http://localhost:8080
+# Leave NEXT_PUBLIC_API_URL unset for local Next.js development.
+# The frontend calls /api/* and Next.js proxies those requests to http://localhost:8080.
+BACKEND_URL=http://localhost:8080
+NEXT_PUBLIC_SOCKET_URL=http://localhost:8080
 ```
 
 ## API Shape

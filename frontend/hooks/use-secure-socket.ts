@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Client, type IMessage } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
-import { API_URL } from "@/lib/api";
+import { SOCKET_URL } from "@/lib/api";
 import type { ChatMessage, SendMessagePayload } from "@/lib/types";
 
 type TypingEvent = {
@@ -33,7 +33,7 @@ export function useSecureSocket({ token, onMessage, onTyping }: UseSecureSocketO
     if (!token) return;
 
     const client = new Client({
-      webSocketFactory: () => new SockJS(`${API_URL}/ws`),
+      webSocketFactory: () => new SockJS(`${SOCKET_URL}/ws`),
       connectHeaders: {
         Authorization: `Bearer ${token}`
       },
