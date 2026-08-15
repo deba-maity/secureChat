@@ -23,8 +23,7 @@ public class ConversationService {
             ConversationRepository conversationRepository,
             FavoriteConversationRepository favoriteConversationRepository,
             MessageRepository messageRepository,
-            UserRepository userRepository
-    ) {
+            UserRepository userRepository) {
         this.conversationRepository = conversationRepository;
         this.favoriteConversationRepository = favoriteConversationRepository;
         this.messageRepository = messageRepository;
@@ -93,6 +92,18 @@ public class ConversationService {
         }
     }
 
+    @Transactional
+    public void deleteTemporaryForUser(AppUser currentUser) {
+        AppUser current = managed(currentUser);
+        conversationRepository.findAllByParticipantOneOrParticipantTwo(current, current)
+                .stream()
+                .filter(conversation -> favoriteConversationRepository.countByConversation(conversation) == 0)
+                .forEach(conversation -> {
+                    messageRepository.deleteAllByConversation(conversation);
+                    conversationRepository.delete(conversation);
+                });
+    }
+
     @Transactional(readOnly = true)
     public Conversation requireParticipant(AppUser currentUser, UUID conversationId) {
         AppUser current = managed(currentUser);
@@ -115,8 +126,7 @@ public class ConversationService {
                 favorite != null,
                 favorite != null && favorite.isLocked(),
                 conversation.getLastMessageAt(),
-                unreadCount
-        );
+                unreadCount);
     }
 
     private Conversation createPair(AppUser currentUser, AppUser target) {

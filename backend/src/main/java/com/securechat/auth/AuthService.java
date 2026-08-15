@@ -1,6 +1,7 @@
 package com.securechat.auth;
 
 import com.securechat.common.ApiException;
+import com.securechat.conversation.ConversationService;
 import com.securechat.user.AppUser;
 import com.securechat.user.UserRepository;
 import com.securechat.user.UserSummaryResponse;
@@ -17,11 +18,17 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final ConversationService conversationService;
 
-    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService) {
+    public AuthService(
+            UserRepository userRepository,
+            PasswordEncoder passwordEncoder,
+            JwtService jwtService,
+            ConversationService conversationService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.conversationService = conversationService;
     }
 
     @Transactional
@@ -64,6 +71,7 @@ public class AuthService {
     public void logout(AppUser user) {
         AppUser managed = userRepository.findById(user.getId())
                 .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "User not found"));
+        conversationService.deleteTemporaryForUser(managed);
         managed.setOnline(false);
         managed.setLastSeen(Instant.now());
     }
